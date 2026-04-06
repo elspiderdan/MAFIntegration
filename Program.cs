@@ -17,11 +17,12 @@ builder.Services.AddTransient<ChatClientAgent>(sp =>
 {
     var baseChatClient = sp.GetRequiredService<IChatClient>();
     
-    return new ChatClientAgent(baseChatClient, new ChatClientAgentOptions 
+    var agent = new ChatClientAgent(baseChatClient, new ChatClientAgentOptions 
     {
         Name = "MainAssistant",
-        Instructions = "Eres un asistente utilitario alimentado por una IA custom."
+        Description = "Eres un asistente utilitario alimentado por una IA custom."
     });
+    return agent;
 });
 
 var app = builder.Build();
@@ -31,12 +32,12 @@ app.MapPost("/api/prompt", async (PromptRequest request, ChatClientAgent agent) 
 {
     // Ejecutamos la petición hacia el Agente, el cual terminará delegando
     // en nuestro CustomAIProvider para procesar el Completion genérico.
-    var completion = await agent.CompleteAsync(request.Prompt);
+    var completion = await agent.RunAsync(request.Prompt);
     
     return Results.Ok(new 
     { 
         AgentName = agent.Name,
-        Response = completion.Message.Text 
+        Response = completion.Text 
     });
 });
 

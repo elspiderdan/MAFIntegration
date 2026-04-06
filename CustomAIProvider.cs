@@ -79,8 +79,8 @@ public class CustomAIProvider : IChatClient
         return _aadToken!;
     }
 
-    public async Task<ChatCompletion> CompleteAsync(
-        IList<ChatMessage> chatMessages, 
+    public async Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> chatMessages, 
         ChatOptions? options = null, 
         CancellationToken cancellationToken = default)
     {
@@ -132,24 +132,29 @@ public class CustomAIProvider : IChatClient
             .GetProperty("content")
             .GetString();
 
-        return new ChatCompletion(new ChatMessage(ChatRole.Assistant, responseText));
+        return new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText));
     }
 
-    public async IAsyncEnumerable<StreamingChatCompletionUpdate> CompleteStreamingAsync(
-        IList<ChatMessage> chatMessages, 
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> chatMessages, 
         ChatOptions? options = null, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // La Request de APIM parece estándar para un REST payload síncrono.
         // Si no activamos validaciones "SSE (Server-Sent Events)" omitiremos la fragmentación completa,
         // esto ejecutará el bloque enviándolo por streaming de un solo frame.
-        var completion = await CompleteAsync(chatMessages, options, cancellationToken);
+        var completion = await GetResponseAsync(chatMessages, options, cancellationToken);
         
-        yield return new StreamingChatCompletionUpdate
+        var update = new ChatResponseUpdate
         {
-            Role = ChatRole.Assistant,
-            Text = completion.Message.Text
+            Role = ChatRole.Assistant
         };
+        if (!string.IsNullOrEmpty(completion.Text))
+        {
+            update.Contents.Add(new TextContent(completion.Text));
+        }
+        
+        yield return update;
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null)
